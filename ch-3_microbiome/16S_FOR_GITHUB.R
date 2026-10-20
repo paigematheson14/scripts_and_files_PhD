@@ -4,8 +4,6 @@
 ################################################################################
 ## LIBRARIES
 ################################################################################
-
-# >>> CHANGE: deduplicated + grouped libraries for clarity
 library(BiocManager)
 library(phyloseq)
 library(vegan)
@@ -124,7 +122,7 @@ selected_samples <- unlist(species_subs)
 
 ps_balanced <- prune_samples(selected_samples, ps_nohomo)
 
-# >>> CHANGE: explicit control removal
+#control removal
 ps_final <- subset_samples(ps_balanced, BLAST_ID != "control")
 
 ps_final #2732 taxa; 32 samples
@@ -157,14 +155,13 @@ mStat_validate_data(norm.data.obj)
 ps_class <- tax_glom(ps_final, taxrank = "Class")
 ps_class <- subset_taxa(ps_class, !grepl("Incertae_sedis|unassigned|Unknown", Class))
 ps_class
-# Step 2: Keep top 15 most abundant classes
+#Keep top 15 most abundant classes
 top15 <- names(sort(taxa_sums(ps_class), decreasing = TRUE))[1:15]
 ps_top15_class <- prune_taxa(top15, ps_class)
 
 #make relative 
 ps_top15_class <- transform_sample_counts(ps_top15_class, function(x) x / sum(x))
 
-# Step 3: Melt to dataframe
 df <- psmelt(ps_top15_class)
 
 #Sort out the colours
@@ -178,7 +175,7 @@ tax_palette_plot(myPal)
 # Common theme
 base_theme <- theme_minimal(base_size = 11, base_family = "Montserrat") +
   theme(
-    text = element_text(color = "black"),  # <-- this line makes all text black
+    text = element_text(color = "black"),  
     axis.text.x = element_text(angle = 90, size = 5, hjust = 1, vjust = 0.5),
     axis.text.y = element_text(size = 9),
     strip.text = element_text(face = "bold", size = 12),
@@ -191,8 +188,7 @@ df_chilli  <- subset(df, BLAST_ID == "Calliphora_hilli")
 df_stygia  <- subset(df, BLAST_ID == "Calliphora_stygia")
 df_chryso  <- subset(df, BLAST_ID == "Chrysomya_rufifacies")
 df_lucilia <- subset(df, BLAST_ID == "Lucilia_spp")
-
-# Remove y-axis text for all but first plot
+                                          
 no_y_axis <- theme(
   axis.text.y = element_blank(),
   axis.title.y = element_blank(),
@@ -371,7 +367,7 @@ var2 <- round(pcoa_16s$values$Relative_eig[2] * 100, 2)
 
 #plot!
 
-# ---- Colour palette ----
+#colour palette
 species_palette <- c(
   "Calliphora_hilli"       = "#009B77",
   "Calliphora_stygia"      = "#DD4124",
@@ -379,7 +375,7 @@ species_palette <- c(
   "Lucilia_spp"            = "#4169E1"
 )
 
-# ---- Main plot ----
+#main plot
 ggplot(pcoa_df, aes(x = Axis.1, y = Axis.2, colour = BLAST_ID)) +
   geom_point(size = 6, alpha = 1) +
   stat_ellipse(size = 1, alpha = 1) +
@@ -394,8 +390,7 @@ ggplot(pcoa_df, aes(x = Axis.1, y = Axis.2, colour = BLAST_ID)) +
       expression(italic("Lucilia")~spp.)
     )
   ) +
-  
-  # FIXED ASPECT RATIO (same as phyloseq)
+                                          
   coord_fixed(sqrt(pcoa_16s$values$Relative_eig[1] /
                      pcoa_16s$values$Relative_eig[2])) +
   
@@ -446,7 +441,7 @@ bd_df <- data.frame(
   Species = bd$group,
   DistanceToCentroid = bd$distances
 )
-# Clean species names and fix typo
+                                          
 bd_df$Species <- gsub("_", " ", bd$group)
 bd_df$Species <- gsub("Chrysomya rufifacies", "Ch. rufifacies", bd_df$Species)
 bd_df$Species <- gsub("Calliphora stygia", "C. stygia", bd_df$Species)
@@ -472,7 +467,7 @@ ggplot(bd_df, aes(x = Species, y = DistanceToCentroid)) +
   
   # Jittered points with dark grey outline
   geom_jitter(aes(fill = Species),
-              color = "grey10",       # dark grey outline
+              color = "grey10",       
               width = 0.2, size = 2.5,
               shape = 21, stroke = 0.8) +
   
@@ -492,8 +487,7 @@ ggplot(bd_df, aes(x = Species, y = DistanceToCentroid)) +
 
 ################################################################################
 ############################## CLAM TESTS #######################################
-######################## ASV + CLASS LEVEL ANALYSES #############################
-################################################################################
+
 
 library(vegan)
 library(phyloseq)
@@ -520,7 +514,6 @@ sample_data(no_luci)$BLAST_ID   <- "Other"
 ## ASV-LEVEL CLAM TESTS
 ################################################################################
 
-# >>> CHANGE: explicit list to store results consistently
 clam_asv_results <- list()
 specialist_counts <- data.frame(
   Species = character(),
@@ -593,7 +586,7 @@ clam_luci_asv <- run_asv_clam(
 )
 
 ################################################################################
-## ASV SPECIALIST COUNTS (REPORT THESE)
+## ASV SPECIALIST COUNTS 
 ################################################################################
 
 specialist_counts
@@ -605,7 +598,7 @@ write.csv(
 )
 
 ################################################################################
-## OPTIONAL: EXTRACT ASV LISTS PER SPECIES
+##EXTRACT ASV LISTS PER SPECIES
 ################################################################################
 
 extract_asv_specialists <- function(clam_res, species_name) {
@@ -623,14 +616,14 @@ ASVs_stygia  <- extract_asv_specialists(clam_stygia_asv, "Calliphora_stygia")
 ASVs_chryso  <- extract_asv_specialists(clam_chryso_asv, "Chrysomya_rufifacies")
 ASVs_luci    <- extract_asv_specialists(clam_luci_asv, "Lucilia_spp")
 
-tax_df <- as.data.frame(tax_table(ps_final))  # Extract taxonomy table
-tax_df$ASV <- rownames(tax_df)               # Add ASV IDs as a column
+tax_df <- as.data.frame(tax_table(ps_final))  
+tax_df$ASV <- rownames(tax_df)              
 
 get_specialist_species <- function(asv_vector, tax_df) {
   tax_df %>%
-    filter(ASV %in% asv_vector) %>%   # keep only specialist ASVs
-    group_by(Species) %>%              # group by fungal species
-    summarise(n_ASVs = n()) %>%       # count ASVs per species
+    filter(ASV %in% asv_vector) %>%  
+    group_by(Species) %>%             
+    summarise(n_ASVs = n()) %>%     
     arrange(desc(n_ASVs))
 }
 
@@ -649,7 +642,7 @@ data.frame(
   )
 )
 
-write.csv(species_hilli, "specialists_hilli.csv") # to figure out how many ASVS are associated with species
+write.csv(species_hilli, "specialists_hilli.csv")
 write.csv(species_hilli, "specialists_stygia.csv")
 write.csv(species_hilli, "specialists_chryso.csv")
 write.csv(species_hilli, "specialists_luci.csv")
