@@ -4,8 +4,6 @@
 ################################################################################
 ## LIBRARIES
 ################################################################################
-
-# >>> CHANGE: deduplicated + grouped libraries for clarity
 library(BiocManager)
 library(phyloseq)
 library(vegan)
@@ -126,7 +124,6 @@ selected_samples <- unlist(species_subs)
 
 ps_balanced <- prune_samples(selected_samples, ps_clean)
 
-# >>> CHANGE: explicit control removal
 ps_final <- subset_samples(ps_balanced, BLAST_ID != "control")
 
 ps_final #700 taxa; 32 samples
@@ -169,7 +166,6 @@ ps_top15_class <- prune_taxa(top15, ps_class)
 #make relative 
 ps_top15_class <- transform_sample_counts(ps_top15_class, function(x) x / sum(x))
 
-# Step 3: Melt to dataframe
 df <- psmelt(ps_top15_class)
 
 #Sort out the colours
@@ -492,12 +488,12 @@ ggplot(bd_df, aes(x = Species, y = DistanceToCentroid)) +
   
   # Jittered points with dark grey outline
   geom_jitter(aes(fill = Species),
-              color = "grey10",       # dark grey outline
+              color = "grey10",      
               width = 0.2, size = 2.5,
               shape = 21, stroke = 0.8) +
   
   # Colour palettes
-  scale_fill_manual(values = my_colors) +         # for fill (box and point)
+  scale_fill_manual(values = my_colors) +        
   
   # Theme and axis formatting
   theme_minimal(base_family = "Montserrat", base_size = 15) +
@@ -643,14 +639,14 @@ ASVs_stygia  <- extract_asv_specialists(clam_stygia_asv, "Calliphora_stygia")
 ASVs_chryso  <- extract_asv_specialists(clam_chryso_asv, "Chrysomya_rufifacies")
 ASVs_luci    <- extract_asv_specialists(clam_luci_asv, "Lucilia_spp")
 
-tax_df <- as.data.frame(tax_table(ps_final))  # Extract taxonomy table
-tax_df$ASV <- rownames(tax_df)               # Add ASV IDs as a column
+tax_df <- as.data.frame(tax_table(ps_final))  
+tax_df$ASV <- rownames(tax_df)              
 
 get_specialist_species <- function(asv_vector, tax_df) {
   tax_df %>%
-    filter(ASV %in% asv_vector) %>%   # keep only specialist ASVs
-    group_by(Species) %>%              # group by fungal species
-    summarise(n_ASVs = n()) %>%       # count ASVs per species
+    filter(ASV %in% asv_vector) %>%  
+    group_by(Species) %>%             
+    summarise(n_ASVs = n()) %>%       
     arrange(desc(n_ASVs))
 }
 
@@ -669,7 +665,7 @@ data.frame(
   )
 )
 
-write.csv(species_hilli, "specialists_hilli.csv") # to figure out how many ASVS are associated with species
+write.csv(species_hilli, "specialists_hilli.csv") 
 write.csv(species_hilli, "specialists_stygia.csv")
 write.csv(species_hilli, "specialists_chryso.csv")
 write.csv(species_hilli, "specialists_luci.csv")
@@ -830,12 +826,11 @@ p <- ggplot(data=df, aes(x=Index, y=LibrarySize, colour = BLAST_ID)) +
     axis.title.x = element_text(size = 15),
     axis.title.y = element_text(size = 15),
     
-    # LEGEND TEXT (italic + moderate spacing)
     legend.title = element_blank(),
     legend.text = element_text(size = 12, face = "italic"),
     legend.key.height = unit(0.9, "lines"),
     
-    # REMOVE GREY BACKGROUND
+  
     legend.background = element_blank(),
     legend.box.background = element_blank(),
     legend.key = element_blank()
