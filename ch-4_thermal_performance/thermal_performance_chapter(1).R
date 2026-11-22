@@ -9,21 +9,15 @@ library(emmeans)
 library(statmod) 
 library(tweedie)  
 
-#set zero sum contrasts for ANOVA Type III so that the main effects are tested over 
-#unweighted cell means, preventing bias. Otherwise, default R uses treatment contrasts, 
-#which compares all levels of a factor to a baseline (reference) level. 
+#set zero sum contrasts for ANOVA Type III so that the main effects are tested over unweighted cell means, preventing bias. Otherwise, default R uses treatment contrasts, which compares all levels of a factor to a baseline (reference) level. 
 options(contrasts = c("contr.sum", "contr.poly"))
 set.seed(2025)
 
 #create folder for the figures
 dir.create("outputs")
 
-#95% confidence interval function: takes a vector of numbers (x), removes any missing values 
-#from the data (NAs), calculates the margin of error (h), finds the t-score for 95% confidence 
-#interval (uses 0.975 because a two-tailed 95% interval leaves 2.5% or 0.025 in each tail, and 
-#calculates standard error as standard deviation divided by the square root of the sample size. 
-#Out puts as a data frame with 3 columns: y = sample mean, ymin = lower bound of the 95% conf int 
-#and ymax = upper bound
+#95% confidence interval function: takes a vector of numbers (x), removes any missing values from the data (NAs), calculates the margin of error (h), finds the t-score for 95% confidence interval (uses 0.975 because a two-tailed 95% interval leaves 2.5% or 0.025 in each tail, and 
+#calculates standard error as standard deviation divided by the square root of the sample size. Out puts as a data frame with 3 columns: y = sample mean, ymin = lower bound of the 95% conf int and ymax = upper bound
 ci95 <- function(x) {             
   x <- na.omit(x); h <- qt(0.975, length(x) - 1) * sd(x) / sqrt(length(x))
   data.frame(y = mean(x), ymin = mean(x) - h, ymax = mean(x) + h)
@@ -46,9 +40,7 @@ theme_ch <- theme_classic(base_size = 16) +
 
 
 #Load the data. Treat things like N/A etc. as missing values. 
-#Do some data cleaning using the function mutate - convert the the three date columns from text to date
-#adduming day-month-year format. Create a density column - if the 'control' column has treatment in the
-#cell then the density is labelled as mixed, otherwise inspect the replicate column and label the 'control'
+#Do some data cleaning using the function mutate - convert the the three date columns from text to date adduming day-month-year format. Create a density column - if the 'control' column has treatment in the cell then the density is labelled as mixed, otherwise inspect the replicate column and label the 'control'
 #variables as either n = 10 or n = 20. 
 comp <- read_csv("comp_data.csv", na = c("N/A", "NA", "")) %>%
   mutate(across(c(date_larvae_transferred_to_treatment, date_first_emerged, date_second_emerged),
@@ -56,9 +48,7 @@ comp <- read_csv("comp_data.csv", na = c("N/A", "NA", "")) %>%
                              str_detect(replicate, "^..10-") ~ "n = 10",
                              str_detect(replicate, "^..20-") ~ "n = 20"))
 
-#build long-format slice of the data: one row per species per cage: larvae added, adults emerged,
-#days to first adult - drops irrelevant columns from the bigger dataset (because used transmutate function)
-#always check that the code is doing what you want it to do by looking at the shape and structure of the
+#build long-format slice of the data: one row per species per cage: larvae added, adults emerged, days to first adult - drops irrelevant columns from the bigger dataset (because used transmutate function) always check that the code is doing what you want it to do by looking at the shape and structure of the
 #data table IRL
 species_rows <- function(sp, code) {
   comp %>% transmute(
@@ -73,9 +63,7 @@ species_rows <- function(sp, code) {
     days_to_first = as.numeric(emerge - date_larvae_transferred_to_treatment))
 }
 
-#stack both species data together and drop rows where the species wasn't present. every replicate
-#now appears twice per replicate (because they were mixed) so that we get species level responses
-#gets all the columns ready for plotting - e.g. prop success is number of successful emergences divided by
+#stack both species data together and drop rows where the species wasn't present. every replicate now appears twice per replicate (because they were mixed) so that we get species level responses gets all the columns ready for plotting - e.g. prop success is number of successful emergences divided by
 #the original number of individuals added (10)
 long <- bind_rows(species_rows("sericata", "LS"), species_rows("vicina", "CV")) %>%
   filter(initial > 0) %>%
@@ -84,12 +72,8 @@ long <- bind_rows(species_rows("sericata", "LS"), species_rows("vicina", "CV")) 
          temp_f  = factor(temperature),
          density = factor(density, levels = c("Mixed", "n = 10", "n = 20")))
 
-#getting the body size data cleaned and long:  One replicate per species per sex this time (because
-#body size changes so much between sexes. pivot_longer takes the four columns created by select() and 
-#turns each into its own row so sericata_male becomes species = sericata; sex = male. Values go into a single
-#column (thorax_mm) and rows with missing measurements are dropped (e.g., the replicates with only vicina 
-#has na for sericata columns so this is necessary). Then sets factors via mutate() - species, sex, temp (as category),
-#and density
+#getting the body size data cleaned and long:  One replicate per species per sex this time (because body size changes so much between sexes. pivot_longer takes the four columns created by select() and turns each into its own row so sericata_male becomes species = sericata; sex = male. Values go into a single
+#column (thorax_mm) and rows with missing measurements are dropped (e.g., the replicates with only vicina has na for sericata columns so this is necessary). Then sets factors via mutate() - species, sex, temp (as category), and density
 body <- comp %>%
   select(replicate, temperature, control, density,
          sericata_male = average_body_length_males_lucilia,
@@ -103,9 +87,7 @@ body <- comp %>%
          temp_f  = factor(temperature),
          density = factor(density, levels = c("Mixed", "n = 10", "n = 20")))
 
-#then read in the fecunidty data which comes from a different sheet. parse the treatment column entries
-#so that ls25 becoems like 25 (so that temp is encoded inside the treatment label). the treatment label
-#also encodes species, so if if contains ls = sericata and otherwise its vicina (bc those are the only two
+#then read in the fecunidty data which comes from a different sheet. parse the treatment column entries so that ls25 becoems like 25 (so that temp is encoded inside the treatment label). the treatment label also encodes species, so if if contains ls = sericata and otherwise its vicina (bc those are the only two
 #specices that we have). r
 fec <- read_csv("fecundity.csv") %>%
   transmute(temperature = parse_number(treatment), #build a new table with 1. treatment (parsed so like 25 instead of ls25, which is in the sheet)
@@ -121,9 +103,7 @@ body_mix <- filter(body, control == "treatment")
 
 #stats for the thermal performance part
 
-#Emergence success i used a binomial GLM with fixed effects. I tried including random effect for cage
-#led to a singularity warning (explained no variance in the data). Probably because of the pseudoreplication. 
-#I also tried a range of other models but they did not look any better in Dharma results, so I chose binomial GLM because it is
+#Emergence success i used a binomial GLM with fixed effects. I tried including random effect for cage led to a singularity warning (explained no variance in the data). Probably because of the pseudoreplication. I also tried a range of other models but they did not look any better in Dharma results, so I chose binomial GLM because it is
 #the most parisomonious and easy to interpret
          
 m_emerg <- glm(cbind(success, initial - success) ~ species * temp_f, family = binomial, data = long_mix)
@@ -146,21 +126,16 @@ Anova(m_body, type = "III", test.statistic = "F")
 emm_body <- emmeans(m_body, ~ species | temp_f * sex)
 emm_body; pairs(emm_body)                                
 
-#Offspring: Tweedie GLM, power parameter chosen by profile likelihood. Tweedie is designed to handle lots of zeros and right skewed data
-#but tread cautiously here. Not sure this fecundity data is well equipped to handle any model. I tried lots of others
-#a tweedie distribution with a power parameter between 1 and 2 is a compound Poisson-gamma - it allows
-#a point mass at zero plus a continuous positive part making it good for lots of zeros and right skewed data
+#Offspring: Tweedie GLM, power parameter chosen by profile likelihood. Tweedie is designed to handle lots of zeros and right skewed data but tread cautiously here. Not sure this fecundity data is well equipped to handle any model. I tried lots of others
+#a tweedie distribution with a power parameter between 1 and 2 is a compound Poisson-gamma - it allows a point mass at zero plus a continuous positive part making it good for lots of zeros and right skewed data
 
 #first need to find the best power parameter (p), which controls the mean-variance relationship. values near
-#1 behave more like a Poisson (variance proportional to mean) whereas those near 2 behave more like a gamma
-# (variance proportional to the mean squared). the function tweedie.profile() fits the model at each p from
-#1.1 to 1.0 in steps of 0.05 and computes the likelihood for each. p.max extracts the p with the higherst
+#1 behave more like a Poisson (variance proportional to mean) whereas those near 2 behave more like a gamma (variance proportional to the mean squared). the function tweedie.profile() fits the model at each p from 1.1 to 1.0 in steps of 0.05 and computes the likelihood for each. p.max extracts the p with the higherst
 #likelihood. link.power = 0 means a log link, so effects are multiplicative. 
 best_p <- tweedie.profile(offspring ~ species * temp_f, data = fec, p.vec = seq(1.1, 1.9, by = 0.05),
                           link.power = 0, do.plot = FALSE)$p.max
 best_p #prints best p
-#run model using the best p value (GLM). important to note that bc of the log link, co-efficients 
-#are on the log scale. 
+#run model using the best p value (GLM). important to note that bc of the log link, co-efficients are on the log scale. 
 m_eggs <- glm(offspring ~ species * temp_f, data = fec,
               family = tweedie(var.power = best_p, link.power = 0))
 Anova(m_eggs, type = "III")                          
@@ -168,28 +143,31 @@ Anova(m_eggs, type = "III")
 ##PERFORMANCE INDEX (with bootstrap)
 
 #making some helper functions to bootstrap performance index
-# PI = ln(F * S) / D from species x temperature means (0 when F = 0). - fecundity cages and emergence cages resampled separately, 10,000 times.
+# PI = ln(F * S) / D from species x temperature means (0 when F = 0). - fecundity cages and emergence cages resampled separately, 10,000 times (should i resample whole cage rather than individually??)?.
 
-pi_fun <- function(F, S, D) { FS <- mean(F) * mean(S); if (FS > 0) log(FS) / mean(D) else 0 }
-rs     <- function(x) x[sample.int(length(x), replace = TRUE)]
+pi_fun <- function(F, S, D) { FS <- mean(F) * mean(S); if (FS > 0) log(FS) / mean(D) else 0 } #multiplies average of F by average of S (FS), then takes the log of FS and divides by the
+#mean of D
+rs     <- function(x) x[sample.int(length(x), replace = TRUE)] #function to resample the vector with replacement (core step of a bootstrrap)
 
-pi_summary <- expand_grid(species = c("sericata", "vicina"), temperature = sort(unique(fec$temperature))) %>%
-  pmap_dfr(function(species, temperature) {
-    F <- fec$offspring[fec$species == species & fec$temperature == temperature]
-    e <- filter(long_mix, species == !!species, temperature == !!temperature)
-    S <- e$prop_success; D <- na.omit(e$days_to_first)
-    boot <- replicate(10000, pi_fun(rs(F), rs(S), rs(D)))
+pi_summary <- expand_grid(species = c("sericata", "vicina"), temperature = sort(unique(fec$temperature))) %>% #make every combination of the two species and temperatures found in fecundity data
+  pmap_dfr(function(species, temperature) { #run 1ce per row
+    F <- fec$offspring[fec$species == species & fec$temperature == temperature] #pulls the lifetime offspring values for that species and temperature (one per fecundity cage ie female)
+    e <- filter(long_mix, species == !!species, temperature == !!temperature) #pulls emergenece cages for the saem species & temp. !!species makes dplyr use the function we created's species and temperature values rather than the column names that have the same name
+    S <- e$prop_success; D <- na.omit(e$days_to_first) #prop surviving to adulthood in each emergence cage; D development time per cage with those with NA removed
+    boot <- replicate(10000, pi_fun(rs(F), rs(S), rs(D))) #bootstrap does this 10000 times: respample F S and D each with replacement and compute the performance index from the resampled means
     tibble(species, temperature, PI = pi_fun(F, S, D),
-           lo = if (length(F) > 1) quantile(boot, 0.025) else PI,   # n = 1 female: no CI
+           lo = if (length(F) > 1) quantile(boot, 0.025) else PI,   
            hi = if (length(F) > 1) quantile(boot, 0.975) else PI)
   }) %>%
-  mutate(species = factor(species, levels = c("sericata", "vicina")))
-pi_summary
+  mutate(species = factor(species, levels = c("sericata", "vicina"))) #turn species into a factor with a fixed order so plots and tables list sericata then vicina
+
+pi_summary #cool
 
 
 # mixed v species cages at 22 degrees :) (for the supplementary stuff)
 # One-way ANOVAs (emergence, development, offspring, PI); two-way density x sex
 # ANOVA (Type I) for body size; Tukey HSD where significant.
+#only the 22 degree stuff with the mixed, n = 10 and n = 20 densities
 long_22 <- filter(long, temperature == 22)
 body_22 <- filter(body, temperature == 22)
 fec22 <- read_csv("fecun_sum_22.csv", show_col_types = FALSE) %>%
@@ -199,42 +177,52 @@ fec22 <- read_csv("fecun_sum_22.csv", show_col_types = FALSE) %>%
                                        str_detect(treatment, "10") ~ "n = 10",
                                        TRUE                        ~ "Mixed"),
                              levels = c("Mixed", "n = 10", "n = 20")),
-            offspring = lifetime_fecundity, pi_cage = performance_index)
+            offspring = lifetime_fecundity, pi_cage = performance_index) #do the same data cleaning stuff
 
+#create a loop to do one and two way anovas at 22, once for each species to see if density affects anythign or mixed/ vs/ single replicates
 for (sp in c("vicina", "sericata")) {
-  cat("\n==========", sp, "==========\n")
-  d <- filter(long_22, species == sp); b <- filter(body_22, species == sp); f <- filter(fec22, species == sp)
-  print(summary(aov(prop_success  ~ density,       data = d)))
-  print(summary(aov(days_to_first ~ density,       data = d)))
-  print(summary(aov(thorax_mm     ~ density * sex, data = b)))
-  print(summary(aov(offspring     ~ density,       data = f)))
-  print(summary(aov(pi_cage       ~ density,       data = f)))
+  cat(sp)
+  d <- filter(long_22, species == sp); b <- filter(body_22, species == sp); f <- filter(fec22, species == sp) #filter by speceies
+  print(summary(aov(prop_success  ~ density,       data = d))) #1 way anova for proportion success
+  print(summary(aov(days_to_first ~ density,       data = d))) # one way for days to first emergence
+  print(summary(aov(thorax_mm     ~ density * sex, data = b))) #2 way anova 
+  print(summary(aov(offspring     ~ density,       data = f))) #1 way
+  print(summary(aov(pi_cage       ~ density,       data = f))) #1 way
 }
+
+#then check which groups differ using tukey test for the anova's of interest  
 TukeyHSD(aov(prop_success  ~ density, data = filter(long_22, species == "sericata")))
 TukeyHSD(aov(days_to_first ~ density, data = filter(long_22, species == "sericata")))
 TukeyHSD(aov(thorax_mm ~ density * sex, data = filter(body_22, species == "sericata")), "density")
 
 
 #ACUTE STUFF
+#read in the data and mutate it so that the columns and rows are tidy
 kd <- read.csv("thermal_tolerance_data.csv") %>%
   mutate(sex = factor(sex, levels = c("M", "F")), species = factor(species),
          collection_date = factor(collection_date))
 
+#function for cold and heat stress to fit mixed model with collection date as a random effect (changes the cold tol stuff significantly). coma time is log transformed
+#to better handle right skewed time data and makes effects multiplicative (ie ratios). also tests the effects of species, sex and species x sex. Thorax length is included
+#as a covariate
 kd_models <- map(c(cold = "cold", heat = "heat"), function(x)
   lmer(log(coma_time) ~ species * sex + thorax_length + (1 | collection_date),
        data = filter(kd, cold.heat == x)))
 
+#test the effects using Type III anova. we have already set sun to zero contrasts above
 map(kd_models, Anova, type = "III")                                           
+#estimated means computes marginal means for every model
 kd_emm <- map(kd_models, ~ emmeans(.x, ~ species * sex))
-map(kd_emm, summary, type = "response")                                        
-map(kd_emm, pairs, type = "response")                                          
-with(as.data.frame(VarCorr(kd_models$cold)), vcov[1] / sum(vcov))             
+map(kd_emm, summary, type = "response") #type = response back-transforms from the log scale to get coma times in original units                                       
+map(kd_emm, pairs, type = "response")  #pairwise comparisons (includes male vs female), differences are ratios of comatimes and p-values are adjusted for multiple comparisons                                        
+with(as.data.frame(VarCorr(kd_models$cold)), vcov[1] / sum(vcov))   #wanted to check how much variance was explained by the collection_date because it is quite a lot...          
 
 
 ###FIGUREEEEEES
 
+                 #this function draws a line and point plot of a trait against temperature; one coloured line per species, and shaded ribbon for the error range
 line_panel <- function(d, y, lo, hi, ylab, breaks = c(15, 19, 22, 25, 30)) {
-  ggplot(d, aes(temperature, {{ y }}, colour = species)) +
+  ggplot(d, aes(temperature, {{ y }}, colour = species)) + #e.g., {{y}} lets me pass column names or expressions as arguments, same for {{ lo }} and {{ hi }} below.. 
     geom_ribbon(aes(ymin = {{ lo }}, ymax = {{ hi }}, fill = species), alpha = 0.2, colour = NA) +
     geom_line(linewidth = 1.2) + geom_point(size = 6) +
     scale_colour_manual(values = pal, labels = sp_labels) +
@@ -245,7 +233,7 @@ line_panel <- function(d, y, lo, hi, ylab, breaks = c(15, 19, 22, 25, 30)) {
 
 ##emergence (A), development time (B); mean ± SE
 emerg_sum <- long_mix %>% group_by(species, temperature) %>%
-  summarise(p = sum(success) / sum(initial), se = sqrt(p * (1 - p) / sum(initial)), .groups = "drop")
+  summarise(p = sum(success) / sum(initial), se = sqrt(p * (1 - p) / sum(initial)), .groups = "drop") #standard error is the binomial formula where sqrt(p(1-p)/n
 time_sum <- long_mix %>% filter(!is.na(days_to_first)) %>% group_by(species, temperature) %>%
   summarise(m = mean(days_to_first), se = sd(days_to_first) / sqrt(n()), .groups = "drop")
 
@@ -266,7 +254,7 @@ grp_labels <- c(expression(italic("L. sericata") * " (F)"), expression(italic("L
                 expression(italic("C. vicina") * " (F)"),   expression(italic("C. vicina") * " (M)"))
 
 fig4.4A <- ggplot(body_sum, aes(temperature, m, colour = grp, linetype = grp)) +
-  geom_ribbon(aes(ymin = m - se, ymax = m + se, fill = grp), alpha = 0.3, colour = NA) +
+  geom_ribbon(aes(ymin = m - se, ymax = m + se, fill = grp), alpha = 0.3, colour = NA)
   geom_line(linewidth = 1.2) + geom_point(size = 6) +
   scale_colour_manual(values = unname(pal[c(1, 1, 2, 2)]), labels = grp_labels) +
   scale_linetype_manual(values = c("dotted", "solid", "dotted", "solid"), labels = grp_labels) +
